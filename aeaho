@@ -1,0 +1,200 @@
+--// ￰ﾟﾔﾧ Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+local Bridge = ReplicatedStorage:WaitForChild("Bridge")
+
+--// ￰ﾟﾧﾹ Remove old UI
+for _, v in pairs(player:WaitForChild("PlayerGui"):GetChildren()) do
+	if v:IsA("ScreenGui") and v.Name == "AutoUI" then v:Destroy() end
+end
+
+--// ￰ﾟﾧﾩ Require Meta safely
+local function safeRequireMeta()
+	local ok, mod = pcall(function()
+		return require(player:WaitForChild("PlayerScripts"):WaitForChild("MetaService"))
+	end)
+	return ok and mod or nil
+end
+local upvr = safeRequireMeta()
+
+--// ￰ﾟﾪﾞ Create UI
+local gui = Instance.new("ScreenGui", player.PlayerGui)
+gui.Name = "AutoUI"
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+gui.DisplayOrder = 9999
+
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.new(0, 170, 0, 150)
+main.Position = UDim2.new(1, -200, 1, -220)
+main.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+main.Active = true
+main.Draggable = true
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
+
+local title = Instance.new("TextLabel", main)
+title.Size = UDim2.new(1, 0, 0, 25)
+title.BackgroundTransparency = 1
+title.Text = "Auto Script Control"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+--// ￢ﾚﾙ￯ﾸﾏ Reopen (gear icon)
+local function createReopen()
+	if gui:FindFirstChild("Reopen") then return end
+	local reopen = Instance.new("ImageButton", gui)
+	reopen.Name = "Reopen"
+	reopen.Image = "rbxassetid://6031280882"
+	reopen.Size = UDim2.new(0, 32, 0, 32)
+	reopen.Position = UDim2.new(1, -42, 1, -42)
+	reopen.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	reopen.ImageColor3 = Color3.fromRGB(255, 255, 255)
+	reopen.MouseEnter:Connect(function()
+		reopen.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		reopen.ImageColor3 = Color3.fromRGB(0, 0, 0)
+	end)
+	reopen.MouseLeave:Connect(function()
+		reopen.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		reopen.ImageColor3 = Color3.fromRGB(255, 255, 255)
+	end)
+	reopen.MouseButton1Click:Connect(function()
+		main.Visible = true
+		reopen:Destroy()
+	end)
+end
+
+local closeBtn = Instance.new("TextButton", main)
+closeBtn.Size = UDim2.new(0, 20, 0, 20)
+closeBtn.Position = UDim2.new(1, -25, 0, 5)
+closeBtn.Text = "X"
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 12
+closeBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.MouseButton1Click:Connect(function()
+	main.Visible = false
+	createReopen()
+end)
+
+--// ￰ﾟﾧﾠ Global variables
+getgenv().AutoRank = false
+getgenv().AutoHatch = false
+
+local timers = { AutoRank = 0 }
+local buttons = {}
+
+--// ￰ﾟﾌﾍ Map dropdown for AutoHatch
+local selectedMap = "Demonic World"
+local mapList = {"Orc Sanctuary", "Demonic World", "Ant Island", "Volcano"}
+
+local mapDrop = Instance.new("TextButton", main)
+mapDrop.Size = UDim2.new(0, 150, 0, 25)
+mapDrop.Position = UDim2.new(0, 10, 0, 115)
+mapDrop.Text = "Map: " .. selectedMap
+mapDrop.Font = Enum.Font.Gotham
+mapDrop.TextSize = 12
+mapDrop.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+mapDrop.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local mapMenu = Instance.new("Frame", mapDrop)
+mapMenu.Visible = false
+mapMenu.Size = UDim2.new(1, 0, 0, #mapList * 20)
+mapMenu.Position = UDim2.new(0, 0, 1, 0)
+mapMenu.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+
+for i, map in ipairs(mapList) do
+	local opt = Instance.new("TextButton", mapMenu)
+	opt.Size = UDim2.new(1, 0, 0, 20)
+	opt.Position = UDim2.new(0, 0, 0, (i - 1) * 20)
+	opt.Text = map
+	opt.Font = Enum.Font.Gotham
+	opt.TextSize = 12
+	opt.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	opt.TextColor3 = Color3.fromRGB(255, 255, 255)
+	opt.MouseButton1Click:Connect(function()
+		selectedMap = map
+		mapDrop.Text = "Map: " .. map
+		mapMenu.Visible = false
+	end)
+end
+mapDrop.MouseButton1Click:Connect(function()
+	mapMenu.Visible = not mapMenu.Visible
+end)
+
+--// ￰ﾟﾔﾘ Buttons
+local autoRankBtn = Instance.new("TextButton", main)
+autoRankBtn.Size = UDim2.new(0, 150, 0, 25)
+autoRankBtn.Position = UDim2.new(0, 10, 0, 35)
+autoRankBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+autoRankBtn.Font = Enum.Font.Gotham
+autoRankBtn.TextSize = 12
+autoRankBtn.TextColor3 = Color3.fromRGB(255, 0, 0)
+autoRankBtn.Text = "AutoRank : OFF"
+buttons.AutoRank = autoRankBtn
+
+local autoHatchBtn = Instance.new("TextButton", main)
+autoHatchBtn.Size = UDim2.new(0, 150, 0, 25)
+autoHatchBtn.Position = UDim2.new(0, 10, 0, 70)
+autoHatchBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+autoHatchBtn.Font = Enum.Font.Gotham
+autoHatchBtn.TextSize = 12
+autoHatchBtn.TextColor3 = Color3.fromRGB(255, 0, 0)
+autoHatchBtn.Text = "AutoHatch : OFF"
+buttons.AutoHatch = autoHatchBtn
+
+--// ￰ﾟﾟﾢ AutoRank logic (with timer)
+task.spawn(function()
+	while task.wait(1) do
+		if getgenv().AutoRank then
+			if timers.AutoRank <= 0 then
+				timers.AutoRank = 180
+				pcall(function()
+					local Data = upvr.Data
+					local nextRank = (Data.Rank or 0) + 1
+					local rankData = upvr.SharedModules.Ranks[nextRank]
+					if rankData and Data.Energy >= upvr.Utils.Number:Unformat(rankData.Price) then
+						Bridge:FireServer("RankUp", "Evolve")
+					end
+				end)
+			else
+				timers.AutoRank -= 1
+			end
+			buttons.AutoRank.Text = string.format("AutoRank : ON (%ds)", timers.AutoRank)
+			buttons.AutoRank.TextColor3 = Color3.fromRGB(0,255,0)
+		else
+			buttons.AutoRank.Text = "AutoRank : OFF"
+			buttons.AutoRank.TextColor3 = Color3.fromRGB(255,0,0)
+		end
+	end
+end)
+
+--// ￰ﾟﾪﾄ AutoHatch (simple loop)
+task.spawn(function()
+	while task.wait(1) do
+		if getgenv().AutoHatch then
+			local args = {
+				"Stars",
+				"Roll",
+				{
+					Map = selectedMap,
+					Type = "Multi"
+				}
+			}
+			pcall(function()
+				Bridge:FireServer(unpack(args))
+			end)
+		end
+	end
+end)
+
+--// ￰ﾟﾔﾘ Toggle buttons
+autoRankBtn.MouseButton1Click:Connect(function()
+	getgenv().AutoRank = not getgenv().AutoRank
+end)
+
+autoHatchBtn.MouseButton1Click:Connect(function()
+	getgenv().AutoHatch = not getgenv().AutoHatch
+	autoHatchBtn.Text = "AutoHatch : " .. (getgenv().AutoHatch and "ON" or "OFF")
+	autoHatchBtn.TextColor3 = getgenv().AutoHatch and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,0,0)
+end)
